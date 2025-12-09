@@ -21,6 +21,18 @@ CREATE TABLE private_domains (
 )
 ```
 
+## 🌐 Web Interface
+
+**Live Demo:** [https://YOUR_USERNAME.github.io/YOUR_REPO/](https://YOUR_USERNAME.github.io/YOUR_REPO/)
+
+An interactive web interface built with DuckDB WASM allows you to:
+- Search domains by submitter or domain name
+- View real-time statistics
+- Export results to CSV
+- No backend required - runs entirely in your browser
+
+The web app directly attaches to the DuckDB database hosted on GitHub and queries it client-side using WebAssembly.
+
 ## Installation
 
 ```bash

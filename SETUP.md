@@ -68,10 +68,18 @@ uv run main.py summary   # Generate today's summary
 
 To initialize this repository:
 
-1. Commit all files to your repository
-2. Push to GitHub
-3. The workflow will run automatically daily
-4. Check the Actions tab to monitor runs
+1. **Update Database URL**: Edit `docs/index.html` and replace `YOUR_USERNAME/YOUR_REPO` with your GitHub username and repository name
+2. **Commit all files** to your repository
+3. **Push to GitHub**
+4. **Enable GitHub Pages**:
+   - Go to repository Settings → Pages
+   - Source: Deploy from a branch
+   - Branch: `main`
+   - Folder: `/docs`
+   - Click Save
+5. The workflow will run automatically daily
+6. Check the Actions tab to monitor runs
+7. Access your web interface at `https://YOUR_USERNAME.github.io/YOUR_REPO/`
 
 ## Troubleshooting
 
