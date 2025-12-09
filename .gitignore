@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Downloaded PSL file
+public_suffix_list.dat
+
+# DuckDB database (except psl.db which we track)
+*.db
+!psl.db
+*.db.wal
+
+# Exported data
+*.csv
+
+# Summary files (track new-domains-*.md files)
+# Note: new-domains-*.md files are tracked in git

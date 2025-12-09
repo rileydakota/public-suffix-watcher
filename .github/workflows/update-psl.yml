@@ -1,0 +1,57 @@
+name: Update Public Suffix List
+
+on:
+  schedule:
+    # Run daily at 00:00 UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+permissions:
+  contents: write
+
+jobs:
+  update-psl:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history to preserve git state
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Load PSL data
+        run: uv run main.py load
+
+      - name: Generate summary for new entries
+        id: summary
+        continue-on-error: true
+        run: |
+          if uv run main.py summary; then
+            echo "has_new_entries=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_new_entries=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Add the database and summary files
+          git add psl.db summaries/
+
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          # Commit with today's date
+          git commit -m "Update PSL database and summary - $(date -u +%Y-%m-%d)"
+          git push

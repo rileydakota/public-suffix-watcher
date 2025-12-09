@@ -1,0 +1,10 @@
+[project]
+name = "cloud-public-suffix-lists"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "duckdb>=1.0.0",
+    "cachier>=3.0.0",
+]
