@@ -24,7 +24,7 @@ CREATE TABLE private_domains (
 ## Installation
 
 ```bash
-pip install -e .
+uv sync
 ```
 
 ## Usage
@@ -34,13 +34,13 @@ pip install -e .
 Download and parse the Public Suffix List, loading all private domains into DuckDB:
 
 ```bash
-python main.py load
+uv run main.py load
 ```
 
 Or use a local PSL file:
 
 ```bash
-python main.py load /path/to/public_suffix_list.dat
+uv run main.py load /path/to/public_suffix_list.dat
 ```
 
 **Output:**
@@ -56,7 +56,7 @@ Total domains: 8234
 Query all domains submitted by organizations using a specific email domain:
 
 ```bash
-python main.py query akamai.com
+uv run main.py query akamai.com
 ```
 
 **Output:**
@@ -75,7 +75,7 @@ Total: 15 domains
 ### Show Database Statistics
 
 ```bash
-python main.py stats
+uv run main.py stats
 ```
 
 **Output:**
@@ -91,13 +91,13 @@ Total domains: 8234
 Generate a markdown summary of domains discovered on a specific date:
 
 ```bash
-python main.py summary
+uv run main.py summary
 ```
 
 Or specify a custom date:
 
 ```bash
-python main.py summary 2025-12-08
+uv run main.py summary 2025-12-08
 ```
 
 **Output:**
@@ -110,16 +110,104 @@ python main.py summary 2025-12-08
 Export all records to a CSV file:
 
 ```bash
-python main.py export
+uv run main.py export
 ```
 
 Or specify a custom filename:
 
 ```bash
-python main.py export my_data.csv
+uv run main.py export my_data.csv
 ```
 
-## Programmatic Usage
+## Remote Database Access
+
+The DuckDB database is tracked in git and can be accessed remotely via HTTPS without cloning the repository.
+
+### Attach Database from GitHub
+
+You can attach the database directly from GitHub raw URL using DuckDB's ATTACH feature:
+
+```sql
+ATTACH 'https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/psl.db' as psl (READ_ONLY);
+
+-- Query the attached database
+SELECT * FROM psl.private_domains LIMIT 10;
+
+-- Get statistics
+SELECT
+    COUNT(DISTINCT submitted_email_domain) as unique_submitters,
+    COUNT(*) as total_domains
+FROM psl.private_domains;
+
+-- Top 10 submitters by domain count
+SELECT
+    submitted_email_domain,
+    COUNT(*) as domain_count
+FROM psl.private_domains
+GROUP BY submitted_email_domain
+ORDER BY domain_count DESC
+LIMIT 10;
+```
+
+### Using DuckDB CLI
+
+```bash
+# Install DuckDB
+brew install duckdb  # macOS
+# or download from https://duckdb.org/
+
+# Launch DuckDB CLI
+duckdb
+
+# Attach remote database
+ATTACH 'https://raw.githubusercontent.com/rileydakota/public-suffix-watcher/main/psl.db' as psl (READ_ONLY);
+
+# Run queries
+SELECT domain FROM psl.private_domains WHERE submitted_email_domain = 'akamai.com';
+```
+
+### Using Python with DuckDB
+
+```python
+import duckdb
+
+# Connect to DuckDB (in-memory or local)
+conn = duckdb.connect()
+
+# Attach remote database
+conn.execute("""
+    ATTACH 'https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/psl.db'
+    as psl (READ_ONLY)
+""")
+
+# Query the remote database
+result = conn.execute("""
+    SELECT submitted_email_domain, COUNT(*) as count
+    FROM psl.private_domains
+    GROUP BY submitted_email_domain
+    ORDER BY count DESC
+    LIMIT 10
+""").fetchall()
+
+for row in result:
+    print(f"{row[0]}: {row[1]} domains")
+
+conn.close()
+```
+
+### Local Database Access
+
+If you've cloned the repository, access the local database:
+
+```bash
+# Using DuckDB CLI
+duckdb psl.db
+
+# Run queries
+SELECT * FROM private_domains LIMIT 10;
+```
+
+## Programmatic Usage with the Parser
 
 ```python
 from main import PublicSuffixListParser
@@ -131,23 +219,26 @@ print(f"Loaded {count} records")
 
 # Query by email domain
 result = parser.query_by_email_domain("akamai.com")
-df = result.df()
-print(df)
+rows = result.fetchall()
+for row in rows:
+    print(f"{row[0]} - {row[1]} - {row[2]}")
 
 # Get statistics
 stats = parser.get_stats()
 print(f"Unique email domains: {stats[0]}")
 print(f"Total domains: {stats[1]}")
 
-# Run custom SQL queries
+# Run custom SQL queries directly
 custom_result = parser.conn.execute("""
     SELECT submitted_email_domain, COUNT(*) as domain_count
     FROM private_domains
     GROUP BY submitted_email_domain
     ORDER BY domain_count DESC
     LIMIT 10
-""").df()
-print(custom_result)
+""").fetchall()
+
+for row in custom_result:
+    print(f"{row[0]}: {row[1]} domains")
 
 parser.close()
 ```
