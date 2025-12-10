@@ -2,13 +2,14 @@
 
 A Python utility that parses the Public Suffix List (PSL) and stores private domain records in a DuckDB database for fast querying.
 
-## Features
+## How It Works
 
-- Downloads and parses the official Public Suffix List
-- Stores private domains in DuckDB with metadata
-- Query domains by submitter email domain
-- Export data to CSV
-- Track discovery timestamps
+1. Downloads or reads the Public Suffix List file (cached for 1 day using cachier)
+2. Identifies the `===BEGIN PRIVATE DOMAINS===` section
+3. Parses submission metadata from comment lines
+4. Extracts the email domain from submitter emails (e.g., `publicsuffixlist@akamai.com` → `akamai.com`)
+5. Stores each domain with its submitter email domain and discovery timestamp
+6. Uses `INSERT OR IGNORE` to preserve original discovery timestamps
 
 ## Database Schema
 
@@ -20,50 +21,6 @@ CREATE TABLE private_domains (
     PRIMARY KEY (submitted_email_domain, domain)
 )
 ```
-
-## 🌐 Web Interface
-
-**Live Demo:** [https://YOUR_USERNAME.github.io/YOUR_REPO/](https://YOUR_USERNAME.github.io/YOUR_REPO/)
-
-An interactive web interface built with DuckDB WASM allows you to:
-- Search domains by submitter or domain name
-- View real-time statistics
-- Export results to CSV
-- No backend required - runs entirely in your browser
-
-The web app directly attaches to the DuckDB database hosted on GitHub and queries it client-side using WebAssembly.
-
-## Installation
-
-```bash
-uv sync
-```
-
-## Usage
-
-### Load PSL Data into DuckDB
-
-Download and parse the Public Suffix List, loading all private domains into DuckDB:
-
-```bash
-uv run main.py load
-```
-
-Or use a local PSL file:
-
-```bash
-uv run main.py load /path/to/public_suffix_list.dat
-```
-
-**Output:**
-```
-Loading Public Suffix List...
-Successfully loaded 8234 private domain records into DuckDB
-Unique email domains: 456
-Total domains: 8234
-```
-
-### Query Domains by Email Domain
 
 Query all domains submitted by organizations using a specific email domain:
 
@@ -177,115 +134,3 @@ ATTACH 'https://raw.githubusercontent.com/rileydakota/public-suffix-watcher/main
 # Run queries
 SELECT domain FROM psl.private_domains WHERE submitted_email_domain = 'akamai.com';
 ```
-
-### Using Python with DuckDB
-
-```python
-import duckdb
-
-# Connect to DuckDB (in-memory or local)
-conn = duckdb.connect()
-
-# Attach remote database
-conn.execute("""
-    ATTACH 'https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/psl.db'
-    as psl (READ_ONLY)
-""")
-
-# Query the remote database
-result = conn.execute("""
-    SELECT submitted_email_domain, COUNT(*) as count
-    FROM psl.private_domains
-    GROUP BY submitted_email_domain
-    ORDER BY count DESC
-    LIMIT 10
-""").fetchall()
-
-for row in result:
-    print(f"{row[0]}: {row[1]} domains")
-
-conn.close()
-```
-
-### Local Database Access
-
-If you've cloned the repository, access the local database:
-
-```bash
-# Using DuckDB CLI
-duckdb psl.db
-
-# Run queries
-SELECT * FROM private_domains LIMIT 10;
-```
-
-## Programmatic Usage with the Parser
-
-```python
-from main import PublicSuffixListParser
-
-# Initialize and load data
-parser = PublicSuffixListParser(db_path="psl.db")
-count = parser.parse_and_load()
-print(f"Loaded {count} records")
-
-# Query by email domain
-result = parser.query_by_email_domain("akamai.com")
-rows = result.fetchall()
-for row in rows:
-    print(f"{row[0]} - {row[1]} - {row[2]}")
-
-# Get statistics
-stats = parser.get_stats()
-print(f"Unique email domains: {stats[0]}")
-print(f"Total domains: {stats[1]}")
-
-# Run custom SQL queries directly
-custom_result = parser.conn.execute("""
-    SELECT submitted_email_domain, COUNT(*) as domain_count
-    FROM private_domains
-    GROUP BY submitted_email_domain
-    ORDER BY domain_count DESC
-    LIMIT 10
-""").fetchall()
-
-for row in custom_result:
-    print(f"{row[0]}: {row[1]} domains")
-
-parser.close()
-```
-
-## GitHub Actions Automation
-
-This repository includes a GitHub Actions workflow that:
-- Runs daily at 00:00 UTC
-- Downloads the latest Public Suffix List
-- Updates the DuckDB database
-- Generates a summary of newly discovered domains
-- Commits the database and summary files to the repository
-
-The workflow is defined in [.github/workflows/update-psl.yml](.github/workflows/update-psl.yml).
-
-**Manual Trigger:**
-You can manually trigger the workflow from the Actions tab in GitHub.
-
-## How It Works
-
-1. Downloads or reads the Public Suffix List file (cached for 1 day using cachier)
-2. Identifies the `===BEGIN PRIVATE DOMAINS===` section
-3. Parses submission metadata from comment lines
-4. Extracts the email domain from submitter emails (e.g., `publicsuffixlist@akamai.com` → `akamai.com`)
-5. Stores each domain with its submitter email domain and discovery timestamp
-6. Uses `INSERT OR IGNORE` to preserve original discovery timestamps
-
-## Requirements
-
-- Python 3.14+
-- DuckDB 1.0.0+
-
-## Files Generated
-
-- `psl.db` - DuckDB database file (tracked in git)
-- `psl.db.wal` - DuckDB write-ahead log (ignored by git)
-- `summaries/new-domains-YYYY-MM-DD.md` - Daily summary files (tracked in git)
-- `private_domains.csv` - CSV export (ignored by git)
